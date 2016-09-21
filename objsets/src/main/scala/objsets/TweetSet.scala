@@ -1,5 +1,6 @@
 package objsets
 
+import common._
 import TweetReader._
 
 /**
@@ -43,7 +44,7 @@ abstract class TweetSet {
    */
     def filter(p: Tweet => Boolean): TweetSet
 
-  
+  def isEmpty: Boolean
   /**
    * This is a helper method for `filter` that propagetes the accumulated tweets.
    */
@@ -56,7 +57,7 @@ abstract class TweetSet {
    * Question: Should we implment this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-    def union(that: TweetSet): TweetSet = ???
+    def union(that: TweetSet): TweetSet
   
   /**
    * Returns the tweet from this set which has the greatest retweet count.
@@ -67,7 +68,7 @@ abstract class TweetSet {
    * Question: Should we implment this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-    def mostRetweeted: Tweet = ???
+    def mostRetweeted: Tweet
   
   /**
    * Returns a list containing all tweets of this set, sorted by retweet count
@@ -78,7 +79,7 @@ abstract class TweetSet {
    * Question: Should we implment this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-    def descendingByRetweet: TweetList = ???
+    def descendingByRetweet: TweetList
   
   /**
    * The following methods are already implemented
@@ -109,12 +110,20 @@ abstract class TweetSet {
 }
 
 class Empty extends TweetSet {
-    def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = this
 
-    def filter(p: Tweet => Boolean): TweetSet = this
+  def isEmpty: Boolean = true
+
+  def descendingByRetweet: TweetList = Nil
+
+  def union(that: TweetSet): TweetSet = that
+
+  def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = acc
+
+  def filter(p: Tweet => Boolean): TweetSet = this
   /**
    * The following methods are already implemented
    */
+  def mostRetweeted: Tweet = throw new NoSuchElementException("Emtpy.mostRetweeted")
 
   def contains(tweet: Tweet): Boolean = false
 
@@ -127,12 +136,31 @@ class Empty extends TweetSet {
 
 class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
 
-    def filter(p: Tweet => Boolean): TweetSet =
-      filterAcc(p, new Empty)
-  
-    def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet =
-      if (p(elem)) left.filterAcc(p, right.filterAcc(p, acc incl elem))
-      else left.filterAcc(p, right.filterAcc(p, acc))
+  def isEmpty: Boolean = false
+
+  def max(a: Tweet, b: Tweet): Tweet =
+    if (a.retweets > b.retweets) a else b
+
+  def mostRetweeted: Tweet =
+    if (left.isEmpty && right.isEmpty) elem
+    else if(left.isEmpty) max(right.mostRetweeted, elem)
+    else if(right.isEmpty) max(left.mostRetweeted, elem)
+    else max(max(left.mostRetweeted, right.mostRetweeted), elem)
+
+  def descendingByRetweet: TweetList = {
+    val mt = mostRetweeted
+    new Cons(mt, remove(mt).descendingByRetweet)
+  }
+
+  def union(that: TweetSet): TweetSet =
+      this.filterAcc(p => true, that)
+
+  def filter(p: Tweet => Boolean): TweetSet =
+    filterAcc(p, new Empty)
+
+  def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet =
+    if (p(elem)) left.filterAcc(p, right.filterAcc(p, acc incl elem))
+    else left.filterAcc(p, right.filterAcc(p, acc))
   /**
    * The following methods are already implemented
    */
