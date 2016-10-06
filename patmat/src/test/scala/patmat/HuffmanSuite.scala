@@ -51,4 +51,8 @@ class HuffmanSuite extends FunSuite {
     }
   }
 
+  test("decode french message") {
+    println(for (i <- decodedSecret) yield i)
+  }
+
 }
